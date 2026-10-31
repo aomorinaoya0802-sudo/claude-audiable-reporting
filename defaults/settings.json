@@ -17,5 +17,9 @@
   "sync_offset_ms": 100.0,
   "highlight_color": "#ffd400",
   "question_style": 1878365376,
-  "question_chime": true
+  "question_chime": true,
+  "local_mt": true,
+  "think_tts": false,
+  "think_style": 1878365376,
+  "done_chime": true
 }

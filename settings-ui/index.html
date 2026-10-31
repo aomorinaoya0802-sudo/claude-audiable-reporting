@@ -39,6 +39,7 @@
     <h2>声</h2>
     <div class="row"><span>声(話者/スタイル)</span><select id="style"></select><span></span></div>
     <div class="row"><span>質問のときの声<br><small>効果音のあと、この声で読む</small></span><select id="question_style"></select><span></span></div>
+    <div class="row"><span>思考メモの声<br><small>要点だけ訳して読む</small></span><select id="think_style"></select><span></span></div>
     <div id="engine-note" style="display:none;font-size:12px;color:var(--mut)">AivisSpeech Engine に接続できないため、声の一覧を取得できません。
       <button id="engine" style="padding:3px 10px">エンジンを起動</button></div>
     <div id="sliders"></div>
@@ -61,6 +62,9 @@
       <button class="tog" id="t-band"><span>画面下の字幕帯を出す(常に2行ぶんの高さを使う)</span><i>OFF</i></button>
       <button class="tog" id="t-inline_highlight"><span>本文の中でも目立たせる(読んでいる文をコード表示にします。文字や行の幅は変わりません)</span><i>OFF</i></button>
       <button class="tog" id="t-question_chime"><span>質問のときに効果音を鳴らす(「質問があります」と言う前)</span><i>OFF</i></button>
+      <button class="tog" id="t-think_tts"><span>思考メモの要点を読む(別の声。訳して短く。長い思考は最初と最後の文だけ)</span><i>OFF</i></button>
+      <button class="tog" id="t-local_mt"><span>英語の訳にローカル翻訳を使う(トークン不要。`/aivis setup translator` で入れる)</span><i>OFF</i></button>
+      <button class="tog" id="t-done_chime"><span>最終回答の前に効果音と「作業完了です。報告します。」を言う</span><i>OFF</i></button>
       <button class="tog" id="t-fast_first"><span>出だしを速くする(軽いサンプリングレートで合成)</span><i>OFF</i></button>
     </div>
     <div class="row" style="margin-top:12px"><span>ハイライトの色<br><small>読んでいる文の背景</small></span><input type="color" id="highlight_color" style="width:100%;height:34px"><span></span></div>
@@ -113,8 +117,9 @@ $('max_chars').addEventListener('input', () => { $('o-max_chars').textContent = 
 $('highlight_color').addEventListener('input', () => save({highlight_color: $('highlight_color').value}));
 $('style').addEventListener('change', () => save({style: Number($('style').value)}));
 $('question_style').addEventListener('change', () => save({question_style: Number($('question_style').value)}));
+$('think_style').addEventListener('change', () => save({think_style: Number($('think_style').value)}));
 function paint(id, on) { const b = $(id); b.classList.toggle('on', !!on); b.querySelector('i').textContent = on ? 'ON' : 'OFF'; b.dataset.on = on ? '1' : '0'; }
-for (const key of ['enabled', 'progress_tts', 'ai_rewrite', 'highlight', 'band', 'inline_highlight', 'question_chime', 'fast_first']) $('t-' + key).addEventListener('click', () => {
+for (const key of ['enabled', 'progress_tts', 'ai_rewrite', 'highlight', 'band', 'inline_highlight', 'question_chime', 'done_chime', 'local_mt', 'think_tts', 'fast_first']) $('t-' + key).addEventListener('click', () => {
   const next = $('t-' + key).dataset.on !== '1'; paint('t-' + key, next); save({[key]: next ? 1 : 0});
 });
 $('test').addEventListener('click', () => { clearTimeout(timer); const p = pending; pending = {};
@@ -132,17 +137,18 @@ async function load() {
     $('sync_offset_ms').min = d.limits.sync_offset_ms[0]; $('sync_offset_ms').max = d.limits.sync_offset_ms[1];
     $('sync_offset_ms').value = d.sync_offset_ms; $('o-sync_offset_ms').textContent = d.sync_offset_ms;
     $('max_chars').value = d.max_chars; $('o-max_chars').textContent = d.max_chars;
-    paint('t-enabled', d.enabled); paint('t-progress_tts', d.progress_tts); paint('t-ai_rewrite', d.ai_rewrite); paint('t-highlight', d.highlight); paint('t-band', d.band); paint('t-question_chime', d.question_chime); paint('t-inline_highlight', d.inline_highlight); paint('t-fast_first', d.fast_first);
+    paint('t-enabled', d.enabled); paint('t-progress_tts', d.progress_tts); paint('t-ai_rewrite', d.ai_rewrite); paint('t-highlight', d.highlight); paint('t-band', d.band); paint('t-question_chime', d.question_chime); paint('t-think_tts', d.think_tts); paint('t-done_chime', d.done_chime); paint('t-local_mt', d.local_mt); paint('t-inline_highlight', d.inline_highlight); paint('t-fast_first', d.fast_first);
     const list = d.speakers || [];
     $('engine-note').style.display = d.speakers ? 'none' : '';
     const s = list.map(x => x.id).join('|') + '|' + d.style;
     if (s !== sig) {
-      sig = s; $('style').textContent = ''; $('question_style').textContent = '';
+      sig = s; $('style').textContent = ''; $('question_style').textContent = ''; $('think_style').textContent = '';
       const opts = list.length ? list : [{id: d.style, name: '(現在の声 style ' + d.style + ')'}];
-      for (const x of opts) { const o = document.createElement('option'); o.value = String(x.id); o.textContent = x.name; $('style').appendChild(o); const q = o.cloneNode(true); $('question_style').appendChild(q); }
+      for (const x of opts) { const o = document.createElement('option'); o.value = String(x.id); o.textContent = x.name; $('style').appendChild(o); $('question_style').appendChild(o.cloneNode(true)); $('think_style').appendChild(o.cloneNode(true)); }
     }
     $('style').value = String(d.style);
     $('question_style').value = String(d.question_style);
+    $('think_style').value = String(d.think_style);
     $('highlight_color').value = d.highlight_color;
   } catch (e) { say('設定サーバーに接続できません'); }
 }

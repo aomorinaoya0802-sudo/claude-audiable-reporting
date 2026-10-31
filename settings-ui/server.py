@@ -18,7 +18,7 @@ NOFLAGS = 0x08000000  # CREATE_NO_WINDOW
 # voice-bridge の Claude 用既定値と範囲に合わせる
 DEFAULTS = {"python_path": "", "engine_path": "", "enabled": True, "max_chars": 1000, "volume": 1.0, "style": 888753761, "speed": 1.15,
             "pitch": 0.0, "intonation": 1.1, "tempo": 1.0, "pause": 0.6, "fast_first": 1,
-            "progress_tts": True, "ai_rewrite": True, "question_style": 1878365376, "question_chime": True, "highlight": True, "band": True, "inline_highlight": True, "sync_offset_ms": 100, "highlight_color": "#ffd400"}
+            "progress_tts": True, "ai_rewrite": True, "question_style": 1878365376, "question_chime": True, "done_chime": True, "local_mt": True, "think_tts": False, "think_style": 1878365376, "highlight": True, "band": True, "inline_highlight": True, "sync_offset_ms": 100, "highlight_color": "#ffd400"}
 LIMITS = {"max_chars": (40, 5000), "sync_offset_ms": (-500, 800), "volume": (0.1, 2.0), "speed": (0.6, 1.8), "pitch": (-0.15, 0.15),
           "intonation": (0.3, 2.0), "tempo": (0.0, 2.0), "pause": (0.2, 1.5)}
 
@@ -44,7 +44,7 @@ def clean(raw, base):
     for k in ("python_path", "engine_path"):
         if isinstance(raw.get(k), str):
             out[k] = raw[k]
-    for k in ("enabled", "progress_tts", "ai_rewrite", "highlight", "band", "inline_highlight", "question_chime"):
+    for k in ("enabled", "progress_tts", "ai_rewrite", "highlight", "band", "inline_highlight", "question_chime", "done_chime", "local_mt", "think_tts"):
         if k in raw:
             out[k] = raw[k] not in (0, False, "0", "false", "", None)
     if "fast_first" in raw:
@@ -57,11 +57,12 @@ def clean(raw, base):
             out["style"] = int(raw["style"])
         except (TypeError, ValueError):
             pass
-    if "question_style" in raw:
-        try:
-            out["question_style"] = int(raw["question_style"])
-        except (TypeError, ValueError):
-            pass
+    for key in ("question_style", "think_style"):
+        if key in raw:
+            try:
+                out[key] = int(raw[key])
+            except (TypeError, ValueError):
+                pass
     return out
 
 

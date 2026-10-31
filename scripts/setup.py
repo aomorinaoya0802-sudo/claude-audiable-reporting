@@ -98,6 +98,8 @@ def doctor():
         has = any(st["id"] == style for s in sp for st in s["styles"])
         line(has, "設定の声(style %s)" % style, "" if has else "このエンジンにその声が無いので、設定画面で選び直してください")
     line(os.path.isfile(env.SETTINGS_FILE), "設定ファイル", env.SETTINGS_FILE)
+    mt_ok = all(os.path.isfile(os.path.join(env.DATA, "mt", "fugumt-en-ja-ct2", f)) for f in ("model.bin", "source.spm", "target.spm"))
+    say("   ローカル翻訳(トークン不要): " + ("入っています" if mt_ok else "入っていません。英語の訳に Haiku か用語集を使います(`/aivis setup translator` で入れられます)"))
     line(os.path.isfile(os.path.join(desktop_dir(), SHORTCUT_NAME)), "設定画面のショートカット", "デスクトップ")
     try:
         import sounddevice as sd
@@ -247,7 +249,7 @@ def detach(argv):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("command", choices=["doctor", "install", "engine"])
+    ap.add_argument("command", choices=["doctor", "install", "engine", "translator"])
     ap.add_argument("--yes", action="store_true")
     ap.add_argument("--detach", action="store_true")
     a = ap.parse_args()
@@ -255,6 +257,16 @@ def main():
         doctor()
     elif a.command == "install":
         install()
+    elif a.command == "translator":
+        mt = os.path.join(HERE, "mt.py")
+        if a.detach:
+            os.makedirs(env.DATA, exist_ok=True)
+            log = open(LOG_FILE, "w", encoding="utf-8")
+            subprocess.Popen([sys.executable, mt, "install"], creationflags=0x00000008 | 0x00000200, close_fds=True,
+                             stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+            say("バックグラウンドで始めました(約125MBをダウンロードして変換します)。経過は %s で見られます。終わったら `/aivis doctor` で確認してください。" % LOG_FILE)
+        else:
+            subprocess.run([sys.executable, mt, "install"])
     else:
         if a.detach:
             detach(["engine", "--yes"] if a.yes else ["engine"])

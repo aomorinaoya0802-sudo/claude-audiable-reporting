@@ -162,8 +162,8 @@ def apply_readings(text, mapping):
     return "".join(out), bound
 
 
-def make_chime(np, volume):
-    """質問を知らせる短い効果音(ピンポン)。音声ファイルは使わず、その場で作る。"""
+def make_chime(np, volume, kind=1):
+    """効果音。kind=1: 質問(ピンポン) / kind=2: 作業完了(ドミソ、上がって終わる)。音声ファイルは使わず、その場で作る。"""
     rate = 44100
 
     def tone(freq, dur):
@@ -171,7 +171,10 @@ def make_chime(np, volume):
         env = np.exp(-5.0 * t) * np.minimum(1.0, t * 200.0)
         return np.sin(2 * np.pi * freq * t) * env + 0.4 * np.sin(2 * np.pi * freq * 2 * t) * env
 
-    wave_ = np.concatenate([tone(880.0, 0.16), tone(1318.5, 0.36)])
+    if kind == 2:
+        wave_ = np.concatenate([tone(523.25, 0.12), tone(659.25, 0.12), tone(783.99, 0.12), tone(1046.5, 0.42)])
+    else:
+        wave_ = np.concatenate([tone(880.0, 0.16), tone(1318.5, 0.36)])
     pcm = (wave_ / np.abs(wave_).max() * 0.55 * 32767 * min(1.0, volume)).astype(np.int16)
     return rate, pcm
 
@@ -357,7 +360,7 @@ def run_worker(a):
 
         threading.Thread(target=synth_worker, daemon=True).start()
         if a.chime:  # 合成を進めている間に、効果音を鳴らす
-            chime_rate, chime_pcm = make_chime(np, a.volume)
+            chime_rate, chime_pcm = make_chime(np, a.volume, a.chime)
             sd.play(chime_pcm, chime_rate)
             sd.wait()
         while True:
