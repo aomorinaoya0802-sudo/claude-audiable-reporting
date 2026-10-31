@@ -7,7 +7,7 @@ export type Highlight = {
   index: number
   /** いま読んでいる文の中の位置（文字数）。ここまで色を付ける */
   pos: number
-  kind: 'answer' | 'progress' | 'test'
+  kind: 'answer' | 'progress' | 'test' | 'question'
   /** ハイライトの背景色（#rrggbb） */
   color: string
 }

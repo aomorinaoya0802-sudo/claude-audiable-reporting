@@ -10,10 +10,12 @@
   "pause": 0.6,
   "fast_first": 1,
   "progress_tts": true,
-  "ai_rewrite": false,
+  "ai_rewrite": true,
   "highlight": true,
   "band": true,
   "inline_highlight": true,
   "sync_offset_ms": 100.0,
-  "highlight_color": "#ffd400"
+  "highlight_color": "#ffd400",
+  "question_style": 1878365376,
+  "question_chime": true
 }

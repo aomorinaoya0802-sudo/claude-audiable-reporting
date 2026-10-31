@@ -15,6 +15,8 @@ type Settings = {
   engine_path: string
   band: boolean
   inline_highlight: boolean
+  question_style: number
+  question_chime: boolean
   sync_offset_ms: number
   max_chars: number
   volume: number
@@ -28,7 +30,7 @@ type Settings = {
 }
 
 const DEFAULTS: Settings = {
-  enabled: true, progress_tts: true, ai_rewrite: false, highlight: true, highlight_color: '#ffd400', python_path: '', engine_path: '', band: true, inline_highlight: true, sync_offset_ms: 100, max_chars: 1000, volume: 1.0,
+  enabled: true, progress_tts: true, ai_rewrite: true, highlight: true, highlight_color: '#ffd400', python_path: '', engine_path: '', band: true, inline_highlight: true, sync_offset_ms: 100, question_style: 1878365376, question_chime: true, max_chars: 1000, volume: 1.0,
   style: 888753761, speed: 1.15, pitch: 0.0, intonation: 1.1, tempo: 1.0, pause: 0.6, fast_first: 1,
 }
 const LIMITS: Record<string, [number, number]> = {
@@ -56,6 +58,8 @@ let lastProgressAt = 0
 let lastProgressText = ''
 const decisions: string[] = []
 let bandEnabled = true
+let lastUserPrompt = ''
+let lastCommentary = ''
 let inlineEnabled = false
 
 function parseSettings(text: string | undefined): Settings {
@@ -70,7 +74,7 @@ function parseSettings(text: string | undefined): Settings {
     const v = Number(raw[k])
     if (raw[k] !== undefined && Number.isFinite(v)) (out as Record<string, unknown>)[k] = Math.max(lo, Math.min(hi, v))
   }
-  for (const k of ['enabled', 'progress_tts', 'ai_rewrite', 'highlight', 'band', 'inline_highlight'] as const) {
+  for (const k of ['enabled', 'progress_tts', 'ai_rewrite', 'highlight', 'band', 'inline_highlight', 'question_chime'] as const) {
     if (raw[k] !== undefined) out[k] = raw[k] !== false && raw[k] !== 0 && raw[k] !== '0'
   }
   if (raw.fast_first !== undefined) out.fast_first = raw.fast_first === 0 || raw.fast_first === false ? 0 : 1
@@ -80,6 +84,8 @@ function parseSettings(text: string | undefined): Settings {
   if (typeof raw.highlight_color === 'string' && /^#[0-9a-fA-F]{6}$/.test(raw.highlight_color)) out.highlight_color = raw.highlight_color
   const style = Number(raw.style)
   if (raw.style !== undefined && Number.isFinite(style)) out.style = Math.trunc(style)
+  const questionStyle = Number(raw.question_style)
+  if (raw.question_style !== undefined && Number.isFinite(questionStyle)) out.question_style = Math.trunc(questionStyle)
   return out
 }
 
@@ -175,8 +181,46 @@ function baseName(p: unknown): string {
 }
 
 /** 作業の合間にモデルが書いた一言。長ければ文末で切って、最大 COMMENTARY_MAX_CHARS 文字。 */
+/**
+ * 英語だけの文を日本語に訳す。英語の文が無ければそのまま返す(呼び出しは増えない)。
+ * 設定がオンなら Haiku で自然に訳し、オフ・失敗のときは用語集で訳す。それでも訳せない文は読まない。
+ */
+async function translateEnglish($: Engine, text: string, useAi: boolean): Promise<string> {
+  const sentences = text.match(/[^。！？!?]+[。！？!?]?/g) ?? [text]
+  const isEnglish = (s: string): boolean => !HAS_JAPANESE.test(s) && /[A-Za-z]{3,}[^A-Za-z]+[A-Za-z]{2,}/.test(s)
+  const targets = sentences.filter(isEnglish)
+  if (targets.length === 0) return text
+  const nl = String.fromCharCode(10)
+  let translated: string[] = []
+  if (useAi) {
+    const r = await $.model
+      .complete({
+        model: 'haiku',
+        prompt: `次の英語を、音声で読み上げる自然な日本語に訳してください。行ごとに、同じ行数で、訳だけを答えてください。固有名詞やファイル名はそのままで構いません。${nl}${targets.map((t) => t.trim()).join(nl)}`,
+        maxTokens: 400,
+        timeoutMs: 6000,
+      })
+      .catch(() => undefined)
+    if (r && r.isAnswered) translated = r.text.split(nl).map((l) => l.trim()).filter(Boolean)
+  }
+  let k = 0
+  return sentences
+    .map((s) => {
+      if (!isEnglish(s)) return s
+      const ja = translated.length === targets.length ? translated[k] : undefined
+      k += 1
+      return ja && HAS_JAPANESE.test(ja) ? endSentence(ja) : translateDescription(s)
+    })
+    .join('')
+}
+
+function japaneseSentences(text: string): string {
+  const sentences = text.match(/[^。！？!?]+[。！？!?]?/g) ?? [text]
+  return sentences.filter((s) => HAS_JAPANESE.test(s)).join('')
+}
+
 function commentaryText(answer: string): string {
-  const t = toSpeech(answer, 600)
+  const t = japaneseSentences(toSpeech(answer, 600))
   if (!t) return ''
   const sentences = t.match(/[^。！？!?]+[。！？!?]?/g) ?? [t]
   let out = ''
@@ -470,8 +514,64 @@ function describeSite(url: string): string {
   return `${host} のページを読んでいます。`
 }
 
+/** AI に渡す、作業の事実(何を・どのファイルに・どのコマンドを)。 */
+function toolFacts(name: string, input: Record<string, unknown>): string {
+  const str = (k: string): string => (typeof input[k] === 'string' ? (input[k] as string) : '')
+  const file = baseName(input.file_path ?? input.notebook_path ?? input.path)
+  switch (name) {
+    case 'Read':
+      return `ファイル ${file} を読む`
+    case 'Write':
+      return `ファイル ${file} を書き込む。内容の冒頭: ${shorten(str('content'), 80)}`
+    case 'Edit':
+    case 'MultiEdit':
+      return `ファイル ${file} を編集する。変更前: ${shorten(str('old_string'), 60)} / 変更後: ${shorten(str('new_string'), 60)}`
+    case 'Bash':
+    case 'PowerShell':
+      return `コマンド: ${shorten(str('command'), 200)} / 説明: ${str('description')}`
+    case 'Grep':
+      return `検索語: ${str('pattern')} / 場所: ${file}`
+    case 'Glob':
+      return `ファイル名のパターン: ${str('pattern')}`
+    case 'WebFetch':
+      return `ウェブページ: ${str('url')} / 知りたいこと: ${shorten(str('prompt'), 80)}`
+    case 'WebSearch':
+      return `ウェブ検索: ${str('query')}`
+    case 'Agent':
+    case 'Task':
+      return `サブエージェントに任せる作業: ${str('description')} ${shorten(str('prompt'), 100)}`
+    default:
+      return name.startsWith('mcp__') ? `外部ツール ${describeMcp(name, input).text}` : `ツール ${name}`
+  }
+}
+
+/** 「〜するために、〜しています」の形で、目的まで含めて日本語にする。失敗したら空文字(規則による言い回しに戻る)。 */
+async function aiPurpose($: Engine, name: string, input: Record<string, unknown>): Promise<string> {
+  const nl = String.fromCharCode(10)
+  const r = await $.model.complete({
+    model: 'haiku',
+    prompt: [
+      'あなたは Claude Code の作業を音声で実況する係です。次の作業を、何のために何をしているかが分かる自然な日本語の1文にしてください。',
+      '形は「〜するために、〜しています。」。60文字以内。ファイル名は名前だけ言ってよいが、フルパス・コマンドそのものは言わない。英語は混ぜない(固有名詞とファイル名を除く)。',
+      '説明・引用符・前置きは付けず、1文だけ答えてください。',
+      `ユーザーの依頼: ${shorten(lastUserPrompt.replace(/\s+/g, ' '), 200)}`,
+      lastCommentary ? `直前の方針: ${shorten(lastCommentary.replace(/\s+/g, ' '), 120)}` : '',
+      `作業: ${toolFacts(name, input)}`,
+    ].filter(Boolean).join(nl),
+    maxTokens: 140,
+    timeoutMs: 5000,
+  })
+  if (!r.isAnswered) return ''
+  const line = endSentence((r.text.split(nl)[0] ?? '').replace(/["「」]/g, ''))
+  return HAS_JAPANESE.test(line) && line.length <= 90 ? line : ''
+}
+
 /** ツール呼び出しを、何をしているか分かる日本語にする。読まないツールは空文字。 */
 async function describeTool($: Engine, name: string, input: Record<string, unknown>, aiRewrite: boolean): Promise<string> {
+  if (aiRewrite && !['TodoWrite', 'ToolSearch', 'AskUserQuestion', 'ExitPlanMode', 'EnterPlanMode'].includes(name)) {
+    const purpose = await aiPurpose($, name, input).catch(() => '')
+    if (purpose) return purpose
+  }
   if (name.startsWith('mcp__')) return describeMcp(name, input).text
   const desc = typeof input.description === 'string' ? input.description.trim() : ''
   // description が日本語ならそのまま、英語なら AI(設定でオン)または用語集で日本語にする
@@ -536,6 +636,22 @@ async function describeTool($: Engine, name: string, input: Record<string, unkno
   }
 }
 
+/** 質問(AskUserQuestion)を読み上げる文にする。「質問があります」から始め、質問と選択肢を読む。 */
+function questionText(input: Record<string, unknown>): string {
+  const questions = Array.isArray(input.questions) ? (input.questions as Array<Record<string, unknown>>) : []
+  const parts: string[] = ['質問があります。']
+  questions.slice(0, 4).forEach((q, i) => {
+    if (typeof q.question !== 'string') return
+    if (questions.length > 1) parts.push(`${i + 1}つ目の質問です。`)
+    parts.push(q.question)
+    const labels = (Array.isArray(q.options) ? (q.options as Array<Record<string, unknown>>) : [])
+      .map((o) => o.label)
+      .filter((l): l is string => typeof l === 'string')
+    if (labels.length > 0) parts.push(`選択肢は、${labels.join('、')}、です。`)
+  })
+  return parts.length > 1 ? toSpeech(parts.join(' '), 700) : ''
+}
+
 /** 日本語の説明を書いてもらうよう、モデルに伝える（進捗の読み上げがオンのときだけ）。 */
 const COMPOSE_NOTE = [
   '音声読み上げの mod(aivis-speech)が有効です。',
@@ -594,9 +710,9 @@ function speakArgv(root: string, args: string[], python: string): string[] {
   return [python, `${root}/scripts/speak.py`, ...args]
 }
 
-function voiceArgs(s: Settings): string[] {
+function voiceArgs(s: Settings, styleOverride?: number): string[] {
   return [
-    '--style', String(s.style),
+    '--style', String(styleOverride ?? s.style),
     '--speed', String(s.speed),
     '--intonation', String(s.intonation),
     '--pitch', String(s.pitch),
@@ -636,7 +752,7 @@ async function note($: Engine, line: string): Promise<void> {
  * 文ごとに合成・再生し、再生中の文を highlight に出す。新しい読み上げは古いものを置き換える。
  * 再生は切り離したワーカーが行う（mod の再読み込みで途切れない）。進捗ファイルを読んでハイライトする。
  */
-async function speak($: Engine, text: string, kind: Highlight['kind'], s: Settings, python: string): Promise<void> {
+async function speak($: Engine, text: string, kind: Highlight['kind'], s: Settings, python: string, opts?: { style?: number; chime?: boolean }): Promise<void> {
   const chunks = toChunks(text)
   if (chunks.length === 0) return
   const id = ++seq
@@ -652,7 +768,7 @@ async function speak($: Engine, text: string, kind: Highlight['kind'], s: Settin
   let errors = ''
   try {
     const launched = await $.process.run(
-      speakArgv($.plugin.root, ['--text-file', file, '--progress-file', progressFile, ...voiceArgs(s)], python),
+      speakArgv($.plugin.root, ['--text-file', file, '--progress-file', progressFile, ...voiceArgs(s, opts?.style), ...(opts?.chime ? ['--chime', '1'] : [])], python),
       { timeoutMs: 20000 },
     )
     if (launched.exitCode !== 0) errors += launched.stderr
@@ -783,7 +899,7 @@ export const register: Register = (on) => {
         await note($, 'answer: 読み上げオフ')
         return done
       }
-      const text = toSpeech(e.answer, settings.max_chars)
+      const text = await translateEnglish($, toSpeech(e.answer, settings.max_chars), settings.ai_rewrite)
       if (!text) {
         await note($, 'answer: 読む文字が空')
         return done
@@ -799,10 +915,12 @@ export const register: Register = (on) => {
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e)
     if (e.agentId === undefined && result.toolUses.length > 0 && result.answer.trim()) {
+      lastCommentary = result.answer
       void (async () => {
         const { settings, python } = await loadSettings($)
         if (!settings.enabled || !settings.progress_tts) return
-        await narrate($, commentaryText(result.answer), settings, python)
+        const translated = await translateEnglish($, toSpeech(result.answer, 600), settings.ai_rewrite)
+        await narrate($, commentaryText(translated), settings, python)
       })().catch(() => {})
     }
     return result
@@ -813,6 +931,14 @@ export const register: Register = (on) => {
     if (e.agentId !== undefined) return next(e)
     const name = e.tool as string
     const input = e as unknown as Record<string, unknown>
+    if (name === 'AskUserQuestion') {
+      void (async () => {
+        const { settings, python } = await loadSettings($)
+        if (!settings.enabled) return
+        const text = questionText(input)
+        if (text) await speak($, text, 'question', settings, python, { style: settings.question_style, chime: settings.question_chime })
+      })().catch(() => {})
+    }
     inflight += 1
     void (async () => {
       const { settings, python } = await loadSettings($)
@@ -878,6 +1004,8 @@ export const register: Register = (on) => {
 
   // 次の入力が始まったら読み上げを止める。
   on('prompt.submit', async ($, e, next) => {
+    lastUserPrompt = e.text
+    lastCommentary = ''
     const { python } = await loadSettings($)
     pendingQueue = []
     speakingId = 0

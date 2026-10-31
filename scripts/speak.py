@@ -162,6 +162,20 @@ def apply_readings(text, mapping):
     return "".join(out), bound
 
 
+def make_chime(np, volume):
+    """質問を知らせる短い効果音(ピンポン)。音声ファイルは使わず、その場で作る。"""
+    rate = 44100
+
+    def tone(freq, dur):
+        t = np.arange(int(rate * dur)) / rate
+        env = np.exp(-5.0 * t) * np.minimum(1.0, t * 200.0)
+        return np.sin(2 * np.pi * freq * t) * env + 0.4 * np.sin(2 * np.pi * freq * 2 * t) * env
+
+    wave_ = np.concatenate([tone(880.0, 0.16), tone(1318.5, 0.36)])
+    pcm = (wave_ / np.abs(wave_).max() * 0.55 * 32767 * min(1.0, volume)).astype(np.int16)
+    return rate, pcm
+
+
 PUNCT = "、，,。！？!?"
 KANA = re.compile(r"[ぁ-んァ-ヴー]")
 KANJI = re.compile(r"[一-龥々]")
@@ -342,6 +356,10 @@ def run_worker(a):
             ready.put(None)
 
         threading.Thread(target=synth_worker, daemon=True).start()
+        if a.chime:  # 合成を進めている間に、効果音を鳴らす
+            chime_rate, chime_pcm = make_chime(np, a.volume)
+            sd.play(chime_pcm, chime_rate)
+            sd.wait()
         while True:
             item = ready.get()
             if item is None:
@@ -386,6 +404,7 @@ def main():
     ap.add_argument("--pause", type=float, default=0.6)
     ap.add_argument("--volume", type=float, default=1.0)
     ap.add_argument("--fast-first", type=int, default=1)
+    ap.add_argument("--chime", type=int, default=0)
     ap.add_argument("--url", default="http://127.0.0.1:10101")
     a = ap.parse_args()
 
