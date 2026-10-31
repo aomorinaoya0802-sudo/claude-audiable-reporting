@@ -1,0 +1,5 @@
+{
+  "name": "claude-audiable-reporting",
+  "owner": { "name": "Kisuzu13" },
+  "plugins": [{ "name": "aivis-speech", "source": "./" }]
+}

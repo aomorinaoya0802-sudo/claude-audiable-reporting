@@ -1,0 +1,9 @@
+{
+  "name": "aivis-speech",
+  "version": "0.3.0",
+  "description": "Claude Code の返答と作業の進捗を AivisSpeech で日本語読み上げし、読んでいる位置をハイライトする mod（設定画面・読みの辞書つき）",
+  "author": { "name": "Kisuzu13" },
+  "repository": "https://github.com/aomorinaoya0802-sudo/claude-audiable-reporting",
+  "types": "./types/index.d.ts",
+  "license": "MIT"
+}

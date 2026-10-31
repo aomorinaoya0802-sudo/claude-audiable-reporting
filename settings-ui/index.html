@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code 声の設定</title>
+<style>
+  :root { --bg:#f6f6f7; --card:#fff; --fg:#1d1d1f; --mut:#6b6b70; --line:#dedee3; --acc:#5a4a86; --on:#1f9d55; --off:#8a8a90; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17171a; --card:#222226; --fg:#ececf0; --mut:#a0a0a8; --line:#38383f; --acc:#9b8bd6; --on:#2fbf71; --off:#66666d; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 "Yu Gothic UI","Segoe UI",system-ui,sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:20px 16px 40px; }
+  h1 { font-size:20px; margin:4px 0 2px; }
+  p.sub { margin:0 0 16px; color:var(--mut); font-size:13px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+  h2 { font-size:13px; margin:0 0 10px; color:var(--mut); font-weight:600; letter-spacing:.04em; }
+  .row { display:grid; grid-template-columns:120px 1fr 52px; align-items:center; gap:10px; margin:9px 0; }
+  .row output { text-align:right; font-variant-numeric:tabular-nums; }
+  small { color:var(--mut); }
+  input[type=range] { width:100%; accent-color:var(--acc); }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  button { font:inherit; border:1px solid var(--line); background:var(--card); color:var(--fg); border-radius:10px; padding:9px 14px; cursor:pointer; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:600; }
+  .tog { display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; }
+  .tog i { font-style:normal; font-weight:700; padding:2px 10px; border-radius:999px; color:#fff; background:var(--off); min-width:44px; text-align:center; }
+  .tog.on i { background:var(--on); }
+  select, input[type=text] { font:inherit; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); width:100%; }
+  table { border-collapse:collapse; width:100%; font-size:13px; } td { padding:4px 0; } td:first-child { color:var(--mut); width:42%; }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:5px; padding:0 5px; font-size:12px; }
+  #status { font-size:12px; color:var(--mut); margin-top:6px; min-height:1.4em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎚 Claude Code 声の設定</h1>
+  <p class="sub">aivis-speech mod の設定です。変更は自動で保存され、次の読み上げから有効です（Claude Code の再起動は不要）。</p>
+
+  <section>
+    <h2>声</h2>
+    <div class="row"><span>声(話者/スタイル)</span><select id="style"></select><span></span></div>
+    <div id="engine-note" style="display:none;font-size:12px;color:var(--mut)">AivisSpeech Engine に接続できないため、声の一覧を取得できません。
+      <button id="engine" style="padding:3px 10px">エンジンを起動</button></div>
+    <div id="sliders"></div>
+    <div class="btns" style="margin-top:10px">
+      <button class="primary" id="test">▶ 読み上げテスト</button>
+      <button id="stop">■ 読み上げ停止</button>
+      <button id="reset">すべて標準に戻す</button>
+    </div>
+    <div class="row"><span>テスト文</span><input type="text" id="testtext" value="AivisSpeech で読み上げています。この声で聞こえていますか？"><span></span></div>
+    <div id="status"></div>
+  </section>
+
+  <section>
+    <h2>オン / オフ</h2>
+    <div class="btns" style="flex-direction:column">
+      <button class="tog" id="t-enabled"><span>Claude Code の返答を読み上げる</span><i>OFF</i></button>
+      <button class="tog" id="t-progress_tts"><span>作業の進捗を読み上げる(ツール実行・途中のひとこと)</span><i>OFF</i></button>
+      <button class="tog" id="t-ai_rewrite"><span>英語の説明を AI で自然な日本語にする(少額のトークンを使用。オフなら用語集で翻訳)</span><i>OFF</i></button>
+      <button class="tog" id="t-highlight"><span>読んでいる文をハイライトする(プロンプト上の帯)</span><i>OFF</i></button>
+      <button class="tog" id="t-band"><span>画面下の字幕帯を出す(常に2行ぶんの高さを使う)</span><i>OFF</i></button>
+      <button class="tog" id="t-inline_highlight"><span>本文の中でも目立たせる(読んでいる文をコード表示にします。文字や行の幅は変わりません)</span><i>OFF</i></button>
+      <button class="tog" id="t-fast_first"><span>出だしを速くする(軽いサンプリングレートで合成)</span><i>OFF</i></button>
+    </div>
+    <div class="row" style="margin-top:12px"><span>ハイライトの色<br><small>読んでいる文の背景</small></span><input type="color" id="highlight_color" style="width:100%;height:34px"><span></span></div>
+    <div class="row" style="margin-top:12px"><span>ハイライトのずれ補正<br><small>+で遅く / -で早く (ms)</small></span><input type="range" id="sync_offset_ms" step="10"><output id="o-sync_offset_ms"></output></div>
+    <div class="row" style="margin-top:12px"><span>読む長さ<br><small>最終回答の先頭から(文末で切る)</small></span><input type="range" id="max_chars"><output id="o-max_chars"></output></div>
+  </section>
+
+  <section>
+    <h2>読みの辞書</h2>
+    <div style="font-size:12px;color:var(--mut);margin-bottom:6px">読み間違いを直します。1行に「語=よみ」で書きます(例: <code>限界飯=げんかいめし</code>)。英単語は、語の途中には当てません。内蔵の辞書(Claude Code / mod / YouTube など)に、ここの内容が上書きで加わります。</div>
+    <textarea id="readings" rows="6" style="width:100%;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)"></textarea>
+    <div class="btns" style="margin-top:8px"><button id="save-readings" class="primary">辞書を保存</button></div>
+    <div class="row" style="margin-top:10px"><span>読みを確認<br><small>エンジンが読む通りのカナ</small></span><input type="text" id="kana-in" placeholder="確認したい文を入れて Enter"><span></span></div>
+    <div id="kana-out" style="font-size:13px;color:var(--mut);margin-top:4px;min-height:1.4em"></div>
+  </section>
+
+  <section>
+    <h2>Claude Code 側の操作</h2>
+    <table>
+      <tr><td>オン / オフ</td><td><code>/aivis on</code> <code>/aivis off</code></td></tr>
+      <tr><td>読み上げを止める</td><td><code>/aivis stop</code>（次のプロンプト送信でも止まる）</td></tr>
+      <tr><td>テスト</td><td><code>/aivis test</code></td></tr>
+      <tr><td>設定画面を開く</td><td><code>/aivis settings</code></td></tr>
+    </table>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">「間の長さ」は AivisSpeech Engine 側でほぼ反映されません（voice-bridge でも同じ制約があり、波形側で整形していました。この mod は整形していません）。</div>
+  </section>
+</main>
+<script>
+const SL = [['volume','音量'],['speed','速さ'],['pitch','声の高さ'],['intonation','感情・抑揚'],['tempo','テンポの緩急'],['pause','間(ま)の長さ']];
+const STEP = {volume:0.05, speed:0.02, pitch:0.01, intonation:0.02, tempo:0.05, pause:0.02};
+const $ = (id) => document.getElementById(id);
+const post = (path, obj) => fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(obj||{})}).then(r => r.json());
+const say = (t) => { $('status').textContent = t; };
+let busyUntil = 0, timer = null, pending = {};
+const inputs = {}, outs = {};
+function save(patch) {
+  busyUntil = Date.now() + 3000; Object.assign(pending, patch); clearTimeout(timer);
+  timer = setTimeout(() => { const p = pending; pending = {}; post('/api/settings', p).then(() => say('保存しました')); }, 200);
+}
+for (const [key, label] of SL) {
+  const row = document.createElement('div'); row.className = 'row';
+  const name = document.createElement('span'); name.textContent = label;
+  const inp = Object.assign(document.createElement('input'), {type:'range', step:STEP[key], min:0, max:1, value:0});
+  const out = document.createElement('output');
+  inp.addEventListener('input', () => { out.textContent = Number(inp.value).toFixed(2); save({[key]: Number(inp.value)}); });
+  inputs[key] = inp; outs[key] = out; row.append(name, inp, out); $('sliders').appendChild(row);
+}
+$('sync_offset_ms').addEventListener('input', () => { $('o-sync_offset_ms').textContent = $('sync_offset_ms').value; save({sync_offset_ms: Number($('sync_offset_ms').value)}); });
+$('max_chars').addEventListener('input', () => { $('o-max_chars').textContent = $('max_chars').value; save({max_chars: Number($('max_chars').value)}); });
+$('highlight_color').addEventListener('input', () => save({highlight_color: $('highlight_color').value}));
+$('style').addEventListener('change', () => save({style: Number($('style').value)}));
+function paint(id, on) { const b = $(id); b.classList.toggle('on', !!on); b.querySelector('i').textContent = on ? 'ON' : 'OFF'; b.dataset.on = on ? '1' : '0'; }
+for (const key of ['enabled', 'progress_tts', 'ai_rewrite', 'highlight', 'band', 'inline_highlight', 'fast_first']) $('t-' + key).addEventListener('click', () => {
+  const next = $('t-' + key).dataset.on !== '1'; paint('t-' + key, next); save({[key]: next ? 1 : 0});
+});
+$('test').addEventListener('click', () => { clearTimeout(timer); const p = pending; pending = {};
+  post('/api/settings', p).then(() => post('/api/test', {text: $('testtext').value})); say('テストを読み上げます（初回はエンジン起動に時間がかかります）'); });
+$('stop').addEventListener('click', () => { post('/api/stop'); say('停止しました'); });
+$('reset').addEventListener('click', () => post('/api/settings', {reset:true}).then(() => { busyUntil = 0; load(); say('標準に戻しました'); }));
+$('engine').addEventListener('click', () => { post('/api/engine/start'); say('エンジンを起動しています…'); });
+let sig = '';
+async function load() {
+  try {
+    const d = await (await fetch('/api/settings', {cache:'no-store'})).json();
+    if (Date.now() < busyUntil) return;
+    for (const [key] of SL) { inputs[key].min = d.limits[key][0]; inputs[key].max = d.limits[key][1]; inputs[key].value = d[key]; outs[key].textContent = Number(d[key]).toFixed(2); }
+    $('max_chars').min = d.limits.max_chars[0]; $('max_chars').max = d.limits.max_chars[1]; $('max_chars').step = 10;
+    $('sync_offset_ms').min = d.limits.sync_offset_ms[0]; $('sync_offset_ms').max = d.limits.sync_offset_ms[1];
+    $('sync_offset_ms').value = d.sync_offset_ms; $('o-sync_offset_ms').textContent = d.sync_offset_ms;
+    $('max_chars').value = d.max_chars; $('o-max_chars').textContent = d.max_chars;
+    paint('t-enabled', d.enabled); paint('t-progress_tts', d.progress_tts); paint('t-ai_rewrite', d.ai_rewrite); paint('t-highlight', d.highlight); paint('t-band', d.band); paint('t-inline_highlight', d.inline_highlight); paint('t-fast_first', d.fast_first);
+    const list = d.speakers || [];
+    $('engine-note').style.display = d.speakers ? 'none' : '';
+    const s = list.map(x => x.id).join('|') + '|' + d.style;
+    if (s !== sig) {
+      sig = s; $('style').textContent = '';
+      const opts = list.length ? list : [{id: d.style, name: '(現在の声 style ' + d.style + ')'}];
+      for (const x of opts) { const o = document.createElement('option'); o.value = String(x.id); o.textContent = x.name; $('style').appendChild(o); }
+    }
+    $('style').value = String(d.style);
+    $('highlight_color').value = d.highlight_color;
+  } catch (e) { say('設定サーバーに接続できません'); }
+}
+async function loadReadings() {
+  try {
+    const d = await (await fetch('/api/readings', {cache:'no-store'})).json();
+    $('readings').value = Object.entries(d.readings || {}).map(([k, v]) => k + '=' + v).join(String.fromCharCode(10));
+  } catch (e) {}
+}
+$('save-readings').addEventListener('click', () => {
+  const map = {};
+  for (const line of $('readings').value.split(String.fromCharCode(10))) {
+    const i = line.indexOf('=');
+    if (i > 0 && line.slice(i + 1).trim()) map[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+  }
+  post('/api/readings', {readings: map}).then(() => say('読みの辞書を保存しました(次の読み上げから)'));
+});
+$('kana-in').addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Enter') return;
+  post('/api/kana', {text: $('kana-in').value}).then((r) => { $('kana-out').textContent = r.kana || ('取得できませんでした ' + (r.error || '')); });
+});
+loadReadings();
+load(); setInterval(load, 3000);
+</script>
+</body>
+</html>

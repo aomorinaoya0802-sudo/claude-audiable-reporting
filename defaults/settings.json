@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "max_chars": 1000,
+  "volume": 1.0,
+  "style": 888753761,
+  "speed": 1.15,
+  "pitch": 0.0,
+  "intonation": 1.1,
+  "tempo": 1.0,
+  "pause": 0.6,
+  "fast_first": 1,
+  "progress_tts": true,
+  "ai_rewrite": false,
+  "highlight": true,
+  "band": true,
+  "inline_highlight": true,
+  "sync_offset_ms": 100.0,
+  "highlight_color": "#ffd400"
+}
