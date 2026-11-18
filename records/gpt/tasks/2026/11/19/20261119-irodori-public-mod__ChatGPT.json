@@ -1,0 +1,72 @@
+{
+  "task_id": "20261119-irodori-public-mod",
+  "title": "Opt-in Irodori TTS backend for Claude Code AivisSpeech mod",
+  "project_id": null,
+  "project_path": null,
+  "created_at": "2026-11-18T22:12:49.778Z",
+  "updated_at": "2026-11-18T22:16:52.642Z",
+  "actor": "ChatGPT",
+  "time_source": "measured",
+  "status": "completed",
+  "user_request": "Extend existing public Claude Code auto-narration mod with an optional Irodori-TTS local synthesis backend while preserving Aivis defaults, verify and publish public-safe changes.",
+  "plan": [
+    "Reuse the existing AivisSpeech mod and its public Git repo",
+    "Add selectable Irodori local server backend without changing defaults",
+    "Test code, commit only target files and push public GitHub repo"
+  ],
+  "actions": [
+    {
+      "at": "2026-11-18T22:16:52.093Z",
+      "type": "edit",
+      "target": "scripts/speak.py",
+      "result": "Added opt-in local Irodori TTS backend preserving Aivis default"
+    },
+    {
+      "at": "2026-11-18T22:16:52.186Z",
+      "type": "run",
+      "target": "PC audio test",
+      "result": "Official quantized model CPU WAV and 127.0.0.1:8088 API WAV generated; local plugin helper returned parseable WAV"
+    }
+  ],
+  "decisions": [
+    {
+      "at": "2026-11-18T22:16:52.271Z",
+      "decision": "Keep AivisSpeech default; CPU-only opt-in fallback for RTX 3050 6 GB",
+      "reason": "GPU CUDA OOM; real CPU synthesis slower than real time"
+    }
+  ],
+  "artifacts": [
+    {
+      "at": "2026-11-18T22:16:51.990Z",
+      "path": "scripts/speak.py"
+    },
+    {
+      "at": "2026-11-18T22:16:51.991Z",
+      "path": "scripts/irodori_backend.py"
+    }
+  ],
+  "verification": [
+    {
+      "at": "2026-11-18T22:16:52.357Z",
+      "check": "Python syntax compile and local production mirror SHA256",
+      "result": "pass: py_compile OK; both scripts identical on active dev mod",
+      "verified_by": "ChatGPT"
+    },
+    {
+      "at": "2026-11-18T22:16:52.442Z",
+      "check": "Local HTTP synthesis server and backend integration",
+      "result": "pass: server 200 WAV 272684 bytes, backend 337964 bytes, 48000Hz"
+    },
+    {
+      "at": "2026-11-18T22:16:52.532Z",
+      "check": "Default engine not changed",
+      "result": "pass: irodori mod-status returns aivis; Irodori is opt-in"
+    }
+  ],
+  "errors": [],
+  "next_action": null,
+  "git": {
+    "branch": "main",
+    "commits": []
+  }
+}

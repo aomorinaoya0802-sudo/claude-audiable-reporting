@@ -28,6 +28,7 @@ import wave
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import aivis_env  # noqa: E402  (保存先・エンジンの場所・ライブラリの置き場。sounddevice などの場所もここで通る)
+import irodori_backend  # noqa: E402  (opt-in Irodori-TTS backend, Aivis remains default)
 
 PID_FILE = os.path.join(tempfile.gettempdir(), "claude-aivis-speech.pid")
 NO_WINDOW = 0x08000000
@@ -307,10 +308,22 @@ def run_worker(a):
             chunks = [ln.strip() for ln in f if ln.strip()]
         if not chunks:
             return
-        ensure_engine(a.url)
+        tts_backend = irodori_backend.backend()
+        if tts_backend == "irodori":
+            irodori_backend.ensure_server()
+        else:
+            ensure_engine(a.url)
         readings = load_readings()
 
         def synth(text):
+            if tts_backend == "irodori":
+                wav = irodori_backend.synthesize_wav(text, speed=a.speed)
+                with wave.open(io.BytesIO(wav)) as wf:
+                    rate, ch = wf.getframerate(), wf.getnchannels()
+                    pcm = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16)
+                if ch > 1:
+                    pcm = pcm.reshape(-1, ch)
+                return rate, pcm
             q = json.loads(http(a.url + "/audio_query?" + urllib.parse.urlencode({"text": text, "speaker": a.style}),
                                 data=b"", timeout=SYNTH_TIMEOUT))
             q["speedScale"] = a.speed
