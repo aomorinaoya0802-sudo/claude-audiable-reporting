@@ -4,7 +4,7 @@
   "project_id": null,
   "project_path": null,
   "created_at": "2026-11-18T21:36:30.318Z",
-  "updated_at": "2026-11-18T22:04:46.345Z",
+  "updated_at": "2026-11-18T22:04:57.754Z",
   "actor": "ChatGPT",
   "time_source": "measured",
   "status": "paused",
@@ -39,6 +39,12 @@
       "type": "send",
       "target": "Notion AivisSpeech existing page",
       "result": "App installation ZIP attached to existing Notion work log page, not public GitHub"
+    },
+    {
+      "at": "2026-11-18T22:04:57.754Z",
+      "type": "commit",
+      "target": "c4816f8777",
+      "result": "ok"
     }
   ],
   "decisions": [
@@ -128,7 +134,13 @@
   "next_action": "Install the Android APK and Tailscale on the phone, enter token, enable notification access, test actual Muse notifications and accessibility labels",
   "git": {
     "branch": "main",
-    "commits": []
+    "commits": [
+      {
+        "hash": "c4816f877769878b9b56f7fd26c9a3176e6ae027",
+        "at": "2026-11-18T22:04:57.753Z",
+        "message": "feat: add private Meta Muse Android AivisSpeech readout bridge"
+      }
+    ]
   },
   "blocked_reason": "Android phone unavailable over ADB; foreground Muse accessibility semantics and Tailscale phone reachability not yet observed"
 }
