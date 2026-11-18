@@ -4,7 +4,7 @@
   "project_id": null,
   "project_path": null,
   "created_at": "2026-11-18T22:12:49.778Z",
-  "updated_at": "2026-11-18T22:16:52.642Z",
+  "updated_at": "2026-11-18T22:17:07.187Z",
   "actor": "ChatGPT",
   "time_source": "measured",
   "status": "completed",
@@ -26,6 +26,12 @@
       "type": "run",
       "target": "PC audio test",
       "result": "Official quantized model CPU WAV and 127.0.0.1:8088 API WAV generated; local plugin helper returned parseable WAV"
+    },
+    {
+      "at": "2026-11-18T22:17:07.187Z",
+      "type": "commit",
+      "target": "c995eeeee5",
+      "result": "ok"
     }
   ],
   "decisions": [
@@ -67,6 +73,12 @@
   "next_action": null,
   "git": {
     "branch": "main",
-    "commits": []
+    "commits": [
+      {
+        "hash": "c995eeeee50f34e522da11dcf311547b13504064",
+        "at": "2026-11-18T22:17:07.186Z",
+        "message": "feat: add opt-in local Irodori TTS backend"
+      }
+    ]
   }
 }
