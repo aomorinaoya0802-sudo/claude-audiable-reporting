@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 *.log
 .claude-plugin/types/
+
+# Generated Android artifacts
+android-companion/build/

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Muse音声補助 AivisSpeech</string>
+  <string name="notif_name">Muse通知読み上げ</string>
+  <string name="a11y_name">Muse画面内返答読み上げ</string>
+  <string name="a11y_desc">Museアプリに限定して、画面が公開するAI返答ラベル付き文字を読み上げます。アクセシビリティ権限は手動で有効化します。</string>
+</resources>

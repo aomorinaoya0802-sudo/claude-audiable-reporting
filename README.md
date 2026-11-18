@@ -90,3 +90,7 @@ mod を入れたら、Claude Code で次の順に実行します。
 ## ライセンス
 
 MIT
+
+## Muse Androidとの音声連携
+
+Android用補助アプリとWindows側ローカル音声合成サービスを追加しました。設定手順は android-companion/README.md を参照してください。

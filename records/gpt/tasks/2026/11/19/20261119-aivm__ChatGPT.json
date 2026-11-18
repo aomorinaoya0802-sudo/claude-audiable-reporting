@@ -1,0 +1,134 @@
+{
+  "task_id": "20261119-aivm",
+  "title": "Meta Muse AivisSpeech音声出力連携",
+  "project_id": null,
+  "project_path": null,
+  "created_at": "2026-11-18T21:36:30.318Z",
+  "updated_at": "2026-11-18T22:04:46.345Z",
+  "actor": "ChatGPT",
+  "time_source": "measured",
+  "status": "paused",
+  "user_request": "既存AivisSpeech読み上げ環境をMeta Museの応答テキストと接続して喋らせる",
+  "plan": [
+    "既存の音声合成プラグインとMuse公開仕様の調査",
+    "ローカルMuse読み上げブリッジの実装",
+    "構文・HTTP・実音声の検証",
+    "Notionへの運用記録とGit commit"
+  ],
+  "actions": [
+    {
+      "at": "2026-11-18T22:04:27.975Z",
+      "type": "search",
+      "target": "Existing AivisSpeech and Meta Muse Android",
+      "result": "Existing plugin, current style 888753761, Tailscale, Android package com.facebook.aura identified"
+    },
+    {
+      "at": "2026-11-18T22:04:28.191Z",
+      "type": "create",
+      "target": "android-companion and scripts/muse_bridge.py",
+      "result": "Android notification/optional accessibility app and authenticated WAV synth bridge implemented in existing repo"
+    },
+    {
+      "at": "2026-11-18T22:04:28.293Z",
+      "type": "run",
+      "target": "Windows Tailscale private bridge",
+      "result": "100.114.247.101:18891 listening via persistent pythonw process 39924; current Windows user Run startup entry installed"
+    },
+    {
+      "at": "2026-11-18T22:04:28.859Z",
+      "type": "send",
+      "target": "Notion AivisSpeech existing page",
+      "result": "App installation ZIP attached to existing Notion work log page, not public GitHub"
+    }
+  ],
+  "decisions": [
+    {
+      "at": "2026-11-18T22:04:28.086Z",
+      "decision": "Android companion app with notification listener and optional accessibility; Tailscale direct private IP and bearer token",
+      "reason": "Native Muse audio override not officially available; Serve not enabled in tailnet; no public exposure"
+    }
+  ],
+  "artifacts": [
+    {
+      "at": "2026-11-18T22:04:28.762Z",
+      "path": "scripts/muse_bridge.py"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/AndroidManifest.xml"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/build.ps1"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/README.md"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/src/jp/aomor/museaivis/MainActivity.java"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/src/jp/aomor/museaivis/RemoteVoice.java"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/src/jp/aomor/museaivis/MuseNoticeService.java"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/src/jp/aomor/museaivis/MuseScreenService.java"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/res/xml/accessibility_service_config.xml"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "android-companion/res/values/strings.xml"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "tests/test_muse_bridge.py"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": "README.md"
+    },
+    {
+      "at": "2026-11-18T22:04:28.763Z",
+      "path": ".gitignore"
+    }
+  ],
+  "verification": [
+    {
+      "at": "2026-11-18T22:04:28.385Z",
+      "check": "Python syntax and unittest",
+      "result": "pass: py_compile and 4 unit tests"
+    },
+    {
+      "at": "2026-11-18T22:04:28.479Z",
+      "check": "Android APK build and signing",
+      "result": "pass: javac, d8, aapt2, APK v2/v3 signature verify and package dump"
+    },
+    {
+      "at": "2026-11-18T22:04:28.575Z",
+      "check": "PC audio synthesizer API",
+      "result": "pass: AivisSpeech Engine 1.2.0 returned WAV over local synthesis; Tailscale server local TCP check passed"
+    },
+    {
+      "at": "2026-11-18T22:04:28.665Z",
+      "check": "Android device installation and Muse notification + screen auto read",
+      "result": "unverified: ADB devices empty; phone Tailscale and permissions not configured"
+    }
+  ],
+  "errors": [],
+  "next_action": "Install the Android APK and Tailscale on the phone, enter token, enable notification access, test actual Muse notifications and accessibility labels",
+  "git": {
+    "branch": "main",
+    "commits": []
+  },
+  "blocked_reason": "Android phone unavailable over ADB; foreground Muse accessibility semantics and Tailscale phone reachability not yet observed"
+}
